@@ -18,8 +18,9 @@
 #define MIN_ANGLE       (0)       /* degrees */
 #define MAX_ANGLE       (180)     /* degrees */
 
-
-
+volatile uint16_t servo_pulse_ticks = 23;
+volatile uint8_t servo_output_high = 0;
+const uint8_t angle_values[] = {10, 25, 75, 45, 100, 40, 125, 15, 150, 50, 170};
 
 /******************************************************************************
  *   Receive from Arduino 1
@@ -33,6 +34,7 @@ volatile uint8_t dist_low = 0;
  *   Local function prototypes
  *******************************************************************************/
 static void steering(int pos);
+
 
 void timer1_init()
 {
@@ -53,6 +55,7 @@ void timer1_init()
     TCCR1B |= (1 << CS12) | (1 << CS10);
 }
 
+
 // ISR FOR LED
 #define SAFE_STATE       0
 #define BRAKE_LIGHTLY    1
@@ -63,10 +66,13 @@ volatile uint8_t current_state = SAFE_STATE;
 
 ISR(TIMER1_COMPA_vect)
 {
+
     // Determine braking state based on dist_low
 
-    if (dist_low > 200)
-    {
+
+    
+    if (dist_low > 200){
+    
         current_state = SAFE_STATE;
     }
     else if (dist_low > 100)
@@ -110,7 +116,9 @@ ISR(TIMER1_COMPA_vect)
             PORTB ^= (1 << PB4);
             break;
     }
-}
+  }
+
+
 
 /******************************************************************************
  *   Function: steering() - Steering
@@ -121,9 +129,22 @@ ISR(TIMER1_COMPA_vect)
  *******************************************************************************/
 static void steering(int pos)
 {
-    // Task-4: 
-    // Your code goes here (Use Lab 05 for reference)
-    // Check the project document to understand the task
+    if (pos < 0)
+        pos = 0;
+
+    if (pos > 180)
+        pos = 180;
+
+    uint16_t pulse_us =
+        SERVO_PULSE_MIN +
+        ((uint32_t)pos * (SERVO_PULSE_MAX - SERVO_PULSE_MIN)) / 180;
+
+    gpio_write(GPIO_6, ON);
+    delay_us(pulse_us);
+    gpio_write(GPIO_6, OFF);
+    delay_us(10000 - pulse_us);
+    delay_us(10000);
+
 }
 
 /******************************************************************************
@@ -151,6 +172,7 @@ UCSR0B |= (1 << RXCIE0);
 gpio_mode(GPIO_6, GPIO_OUTPUT);
 
 ser_printf("System Initialized");
+steering(90);
 }
 
 /******************************************************************************
@@ -164,6 +186,10 @@ ser_printf("System Initialized");
 void loop() 
 {
   while(1){
-    ser_printf("%d\n", dist_low);
+    for(int i = 0; i < 11; ++i){
+      for(int x = 0; x < 25; ++x){
+        steering(angle_values[i]);
+      }
+    }
   }
 }
