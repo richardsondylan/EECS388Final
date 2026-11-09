@@ -38,9 +38,10 @@ ISR(USART_UDRE_vect){
     // so the data will always be available for TX.
     //
     if(dist_high > 0){
-        dist_low = 255;
+        UDR0 = 255;
+    } else {
+        UDR0 = dist_low;
     }
-    UDR0 = dist_low;
 
     // Disable interrupt to stop sending.
     UCSR0B &= ~(1 << UDRIE0);
