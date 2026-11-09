@@ -30,6 +30,9 @@ void transmit_data_low(){
     UCSR0B |= (1 << UDRIE0);
 }
 
+volatile uint8_t dist_low = 0;
+volatile uint8_t dist_high = 0;
+uint8_t current_byte_received = 0;
 ISR(USART_UDRE_vect){
     // Only need to send low byte for distance conditions.
     // However, when high byte is greater than 0, we must
@@ -49,28 +52,61 @@ ISR(USART_UDRE_vect){
 }
 
 
-// ISR Implementation of uart_read to reduce possible latency
-// See PG #49 of the ATmega328P datasheet for interrupt vectors.
-volatile uint8_t dist_low = 0;
-volatile uint8_t dist_high = 0;
-uint8_t current_byte_received = 0;
-ISR(USART_RX_vect){
-    uint8_t udrn_read = UDR0;
-    if(current_byte_received == 2){
-        dist_low = udrn_read;
-    }
-    else if(current_byte_received == 3){
-        dist_high = udrn_read;
-    }
 
-    current_byte_received++;
 
-    if(current_byte_received > 8){
-        current_byte_received = 0;
+volatile uint16_t distance = 0;
+volatile uint16_t rx_count = 0;
+
+ISR(USART_RX_vect)
+{
+    static uint8_t frame[9];
+    static uint8_t index = 0;
+
+    uint8_t data = UDR0;
+    rx_count++;
+
+    // Look for first header byte
+    if (index == 0)
+    {
+        if (data == 0x59)
+        {
+            frame[index++] = data;
+        }
     }
+    // Look for second header byte
+    else if (index == 1)
+    {
+        if (data == 0x59)
+        {
+            frame[index++] = data;
+        }
+        else
+        {
+            index = 0;
+        }
+    }
+    else
+    {
+        frame[index++] = data;
 
-    // Enable transmit
-    transmit_data_low();
+        // Complete 9-byte frame
+        if (index == 9)
+        {
+            uint8_t checksum = 0;
+
+            for (uint8_t i = 0; i < 8; i++)
+            {
+                checksum += frame[i];
+            }
+
+            if (checksum == frame[8])
+            {
+                distance = frame[2] | (frame[3] << 8);
+            }
+
+            index = 0;
+        }
+    }
 }
 
 /******************************************************************************
@@ -87,12 +123,13 @@ ISR(USART_RX_vect){
 void loop()
 {
 
-ser_printline("Setup completed.");
-ser_write( '\n' );
-while( 1 )
-    {
-        ser_printf("%d\n", dist_low);
-    }
+uint16_t current_distance;
+
+    uint8_t oldSREG = SREG;
+    cli();
+    current_distance = distance;
+    SREG = oldSREG;
+    ser_printf("Distance: %u cm\n", current_distance);
 
 return;
 }
