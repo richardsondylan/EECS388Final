@@ -30,26 +30,6 @@ void transmit_data_low(){
     UCSR0B |= (1 << UDRIE0);
 }
 
-volatile uint8_t dist_low = 0;
-volatile uint8_t dist_high = 0;
-uint8_t current_byte_received = 0;
-ISR(USART_UDRE_vect){
-    // Only need to send low byte for distance conditions.
-    // However, when high byte is greater than 0, we must
-    // set dist_low to 255.
-    //
-    // Also, Atmega328p has RX interrupt at higher priority than UDRE,
-    // so the data will always be available for TX.
-    //
-    if(dist_high > 0){
-        UDR0 = 255;
-    } else {
-        UDR0 = dist_low;
-    }
-
-    // Disable interrupt to stop sending.
-    UCSR0B &= ~(1 << UDRIE0);
-}
 
 
 
@@ -102,6 +82,7 @@ ISR(USART_RX_vect)
             if (checksum == frame[8])
             {
                 distance = frame[2] | (frame[3] << 8);
+                transmit_data_low();
             }
 
             index = 0;
@@ -109,6 +90,25 @@ ISR(USART_RX_vect)
     }
 }
 
+uint8_t current_byte_received = 0;
+volatile uint8_t debug_count_TX = 0;
+ISR(USART_UDRE_vect){
+    // Only need to send low byte for distance conditions.
+    // However, when high byte is greater than 0, we must
+    // set dist_low to 255.
+    //
+    // Also, Atmega328p has RX interrupt at higher priority than UDRE,
+    // so the data will always be available for TX.
+    //
+    if(distance > 255){
+        UDR0 = 255;
+    } else {
+        UDR0 = (uint8_t)distance;
+    }
+    debug_count_TX++;
+    // Disable interrupt to stop sending.
+    UCSR0B &= ~(1 << UDRIE0);
+}
 /******************************************************************************
  *   Function: loop() - Main execution loop
  *      Pre condition:
@@ -130,6 +130,6 @@ uint16_t current_distance;
     current_distance = distance;
     SREG = oldSREG;
     ser_printf("Distance: %u cm\n", current_distance);
-
+    delay_ms(1000);
 return;
 }

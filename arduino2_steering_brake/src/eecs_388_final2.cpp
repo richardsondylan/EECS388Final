@@ -19,26 +19,98 @@
 #define MAX_ANGLE       (180)     /* degrees */
 
 
+
+
+/******************************************************************************
+ *   Receive from Arduino 1
+ *******************************************************************************/
+volatile uint8_t dist_low = 0;
+ ISR(USART_RX_vect) {
+  dist_low = UDR0;
+ }
+
 /******************************************************************************
  *   Local function prototypes
  *******************************************************************************/
-static void auto_brake();
 static void steering(int pos);
 
-/******************************************************************************
- *   Function: auto_brake() - Auto Brake
- *      Pre condition: 
- *          None
- *      Post condition: 
- *          Checks the LiDAR distance and configures LEDs
- *******************************************************************************/
-static void auto_brake()
+void timer1_init()
 {
-    // Task-2: 
-    // Your code goes here (Use Lab 2 & 4 for reference)
-    // Check the project document to understand the task
+    // Stop Timer1
+    TCCR1A = 0;
+    TCCR1B = 0;
+
+    // CTC mode
+    TCCR1B |= (1 << WGM12);
+
+    // Set compare match value
+    OCR1A = 1561;
+
+    // Enable compare match interrupt
+    TIMSK1 |= (1 << OCIE1A);
+
+    // Prescaler = 1024
+    TCCR1B |= (1 << CS12) | (1 << CS10);
 }
 
+// ISR FOR LED
+#define SAFE_STATE       0
+#define BRAKE_LIGHTLY    1
+#define BRAKE_HARD       2
+#define UNSAFE_STATE     3
+
+volatile uint8_t current_state = SAFE_STATE;
+
+ISR(TIMER1_COMPA_vect)
+{
+    // Determine braking state based on dist_low
+
+    if (dist_low > 200)
+    {
+        current_state = SAFE_STATE;
+    }
+    else if (dist_low > 100)
+    {
+        current_state = BRAKE_LIGHTLY;
+    }
+    else if (dist_low > 60)
+    {
+        current_state = BRAKE_HARD;
+    }
+    else
+    {
+        current_state = UNSAFE_STATE;
+    }
+
+    // Update LEDs based on state
+
+    switch (current_state)
+    {
+        case SAFE_STATE:
+            // Green ON, Red OFF
+            PORTB |= (1 << PB5);
+            PORTB &= ~(1 << PB4);
+            break;
+
+        case BRAKE_LIGHTLY:
+            // Green ON, Red ON (Yellow)
+            PORTB |= (1 << PB5);
+            PORTB |= (1 << PB4);
+            break;
+
+        case BRAKE_HARD:
+            // Red ON, Green OFF
+            PORTB &= ~(1 << PB5);
+            PORTB |= (1 << PB4);
+            break;
+
+        case UNSAFE_STATE:
+            // Flash red every 100ms
+            PORTB &= ~(1 << PB5);
+            PORTB ^= (1 << PB4);
+            break;
+    }
+}
 
 /******************************************************************************
  *   Function: steering() - Steering
@@ -67,11 +139,13 @@ static void steering(int pos)
 void setup() 
 {
 uart_init();     // Initialize UART for serial output
-
-//Setup Auto-break LEDs for Distance
+sei();
+timer1_init();
+//Setup Auto-break LEDs for dist_low
 gpio_mode(GPIO_13, GPIO_OUTPUT); //RED
 gpio_mode(GPIO_12, GPIO_OUTPUT); //GREEN
 gpio_mode(GPIO_11, GPIO_OUTPUT); //BLUE
+UCSR0B |= (1 << RXCIE0);
 
 //Setup GPIO_6 for PWM output
 gpio_mode(GPIO_6, GPIO_OUTPUT);
@@ -89,34 +163,7 @@ ser_printf("System Initialized");
  *******************************************************************************/
 void loop() 
 {
-// Task-4: 
-// Setup simulated code for the angles from the lab sheet
-int angle;
-
-// Task-1&2:
-// Receive data from arudino1 for the distance and setup the LEDs
-auto_brake();
-
-//  Task-4:
-for (int i = 0; i < 10; i++)
-  {
-  // Here, we set the angle to 180 if the prediction from the DNN is a positive angle
-  // and 0 if the prediction is a negative angle.
-  // This is so that it is easier to see the movement of the servo.
-  // You are welcome to pass the angle values directly to the steering function.
-  // If the servo function is written correctly, it should still work,
-  // only the movements of the servo will be more subtle
-  if( angle > 0 )
-    {
-    steering(180);
-    }
-  else 
-    {
-    steering(0);
-    }
-           
-  // Uncomment the line below to see the actual angles on the servo.
-  // Remember to comment out the if-else statement above!
-  // steering(angle);
+  while(1){
+    ser_printf("%d\n", dist_low);
   }
 }
