@@ -35,7 +35,7 @@ return;
  *******************************************************************************/
 
 // ISR Implementation of uart_read to reduce possible latency
-// See PG #11 of the ATmega328P datasheet for interrupt vectors.
+// See PG #49 of the ATmega328P datasheet for interrupt vectors.
 volatile uint8_t dist_low = 0;
 volatile uint8_t dist_high = 0;
 uint8_t current_byte_received = 0;
@@ -56,15 +56,12 @@ ISR(USART_RX_vect){
 }
 
 
-
 void loop()
 {
-uint16_t dist = 0;              /* LIDAR distance data is 16 bits. */
+uint16_t dist = dist_low | (dist_high << 8);              /* LIDAR distance data is 16 bits. */
 
 ser_printline("Setup completed.");
 ser_write( '\n' );
-ser_write(dist_low);
-ser_write(dist_high);
 while( 1 )
     {
     /*
