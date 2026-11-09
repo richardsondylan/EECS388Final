@@ -27,44 +27,72 @@ static void steering(int pos);
 
 /******************************************************************************
  *   Function: auto_brake() - Auto Brake
- *      Pre condition: 
+ *      Pre condition:
  *          None
- *      Post condition: 
+ *      Post condition:
  *          Checks the LiDAR distance and configures LEDs
  *******************************************************************************/
+
+volatile uint8_t dist = 0;
+ISR(USART_RX_vect){
+    dist = UDR0;
+}
+
+uint8_t led_state = 0;
+void red_pulse(){
+    // Need to set pulse to 100ms
+    // Use timers with prescaler = 64
+
+}
+
 static void auto_brake()
 {
-    // Task-2: 
+    // Task-2:
     // Your code goes here (Use Lab 2 & 4 for reference)
     // Check the project document to understand the task
+    if(dist > 200){
+        gpio_write(GPIO_11, OFF);
+        gpio_write(GPIO_12, ON);
+        gpio_write(GPIO_13, OFF);
+    } else if(dist > 100){
+        gpio_write(GPIO_11, OFF);
+        gpio_write(GPIO_12, ON);
+        gpio_write(GPIO_13, ON);
+    } else if(dist > 60){
+        gpio_write(GPIO_11, OFF);
+        gpio_write(GPIO_12, OFF);
+        gpio_write(GPIO_13, ON);
+    } else {
+
+    }
 }
 
 
 /******************************************************************************
  *   Function: steering() - Steering
- *      Pre condition: 
+ *      Pre condition:
  *          None
- *      Post condition: 
+ *      Post condition:
  *          Control the servomotor with GPIO_6
  *******************************************************************************/
 static void steering(int pos)
 {
-    // Task-4: 
+    // Task-4:
     // Your code goes here (Use Lab 05 for reference)
     // Check the project document to understand the task
 }
 
 /******************************************************************************
  *   Function: setup() - Initializes the Arduino System
- *      Pre condition: 
+ *      Pre condition:
  *          Hardware must be properly connected (BMP180 sensors, etc.)
- *      Post condition: 
+ *      Post condition:
  *          Runs initialization calls one time on power up
  *          UART is initialized for ser_printf()
  *          I2C is initialized for communication with BMP180
  *          calib_data is filled with calibration data from BMP180
  *******************************************************************************/
-void setup() 
+void setup()
 {
 uart_init();     // Initialize UART for serial output
 
@@ -76,20 +104,30 @@ gpio_mode(GPIO_11, GPIO_OUTPUT); //BLUE
 //Setup GPIO_6 for PWM output
 gpio_mode(GPIO_6, GPIO_OUTPUT);
 
+// Enable both A and B Timer/Counter output interrupts.
+TIMSK0 |= (1 << OCIE0B);
+TIMSK0 |= (1 << OCIE0A);
+
+TCCR0B &= ~(1 << CS02);
+TCCR0B |= (1 << CS01);
+TCCR0B |= (1 << CS00);
+
+
+
 ser_printf("System Initialized");
 }
 
 /******************************************************************************
  *   Function: loop() - Main execution loop
- *      Pre condition: 
+ *      Pre condition:
  *          setup() has been executed and system is initialized
- *      Post condition: 
+ *      Post condition:
  *          Performs a single iteration of the system's function
  *          Repeates indefinetely unless the board is reset or powered off
  *******************************************************************************/
-void loop() 
+void loop()
 {
-// Task-4: 
+// Task-4:
 // Setup simulated code for the angles from the lab sheet
 int angle;
 
@@ -110,11 +148,11 @@ for (int i = 0; i < 10; i++)
     {
     steering(180);
     }
-  else 
+  else
     {
     steering(0);
     }
-           
+
   // Uncomment the line below to see the actual angles on the servo.
   // Remember to comment out the if-else statement above!
   // steering(angle);
