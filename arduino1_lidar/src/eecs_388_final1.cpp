@@ -26,7 +26,7 @@ return;
 
 void transmit_data_low(){
     // Enable data empty interrupt flag.
-    UCSR0B |= (1 << UDRIE0)
+    UCSR0B |= (1 << UDRIE0);
 }
 
 ISR(USART_UDRE_vect){
