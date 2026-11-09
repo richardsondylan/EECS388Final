@@ -25,14 +25,29 @@ void setup()
 return;
 }
 
-/******************************************************************************
- *   Function: loop() - Main execution loop
- *      Pre condition:
- *          setup() has been executed and system is initialized
- *      Post condition:
- *          Performs a single iteration of the system's function
- *          Repeates indefinetely unless the board is reset or powered off
- *******************************************************************************/
+void transmit_data_low(){
+    // Enable data empty interrupt flag.
+    UCSR0B |= (1 << UDRIE0);
+}
+
+ISR(USART_UDRE_vect){
+    // Only need to send low byte for distance conditions.
+    // However, when high byte is greater than 0, we must
+    // set dist_low to 255.
+    //
+    // Also, Atmega328p has RX interrupt at higher priority than UDRE,
+    // so the data will always be available for TX.
+    //
+    if(dist_high > 0){
+        UDR0 = 255;
+    } else {
+        UDR0 = dist_low;
+    }
+
+    // Disable interrupt to stop sending.
+    UCSR0B &= ~(1 << UDRIE0);
+}
+
 
 // ISR Implementation of uart_read to reduce possible latency
 // See PG #49 of the ATmega328P datasheet for interrupt vectors.
@@ -55,10 +70,19 @@ ISR(USART_RX_vect){
     }
 }
 
+/******************************************************************************
+ *   Function: loop() - Main execution loop
+ *      Pre condition:
+ *          setup() has been executed and system is initialized
+ *      Post condition:
+ *          Performs a single iteration of the system's function
+ *          Repeates indefinetely unless the board is reset or powered off
+ *******************************************************************************/
+
+
 
 void loop()
 {
-uint16_t dist = dist_low | (dist_high << 8);              /* LIDAR distance data is 16 bits. */
 
 ser_printline("Setup completed.");
 ser_write( '\n' );
