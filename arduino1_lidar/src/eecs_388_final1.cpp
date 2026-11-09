@@ -47,10 +47,12 @@ ISR(USART_RX_vect){
     else if(current_byte_received == 3){
         dist_high = udrn_read;
     }
+
+    current_byte_received++;
+
     if(current_byte_received > 8){
         current_byte_received = 0;
     }
-    current_byte_received++;
 }
 
 
