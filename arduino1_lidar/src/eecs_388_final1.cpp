@@ -91,6 +91,7 @@ ser_printline("Setup completed.");
 ser_write( '\n' );
 while( 1 )
     {
+        ser_printf("%d\n", dist_low);
     }
 
 return;
