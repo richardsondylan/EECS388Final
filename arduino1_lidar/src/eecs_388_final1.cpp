@@ -40,7 +40,7 @@ volatile uint8_t dist_low = 0;
 volatile uint8_t dist_high = 0;
 uint8_t current_byte_received = 0;
 ISR(USART_RX_vect){
-    uint8_t udrn_read = *(volatile uint8_t *)(0xC6);
+    uint8_t udrn_read = UDR0;
     if(current_byte_received == 2){
         dist_low = udrn_read;
     }
