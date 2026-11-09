@@ -9,28 +9,52 @@
 
 /******************************************************************************
  *   Function: setup() - Initializes the Arduino System
- *      Pre condition: 
+ *      Pre condition:
  *          Hardware must be properly connected (sensors, LEDS, etc.)
- *      Post condition: 
+ *      Post condition:
  *          Runs initialization calls one time on power up
  *          Input/Output (IO) pins are configured
  *******************************************************************************/
-void setup() 
+void setup()
 {
+// Enable global interrupts.
+sei();
 uart_init();
 
 return;
 }
 
+void transmit_data_low(){
+    // Enable data empty interrupt flag.
+    UCSR0B |= (1 << UDRIE0)
+}
+
+ISR(USART_UDRE_vect){
+    // Only need to send low byte for distance conditions.
+    // However, when high byte is greater than 0, we must
+    // set dist_low to 255.
+    //
+    // Also, Atmega328p has RX interrupt at higher priority than UDRE,
+    // so the data will always be available for TX.
+    //
+    if(dist_high > 0){
+        dist_low = 255;
+    }
+    UDR0 = dist_low;
+
+    // Disable interrupt to stop sending.
+    UCSR0B &= ~(1 << UDRIE0);
+}
+
 /******************************************************************************
  *   Function: loop() - Main execution loop
- *      Pre condition: 
+ *      Pre condition:
  *          setup() has been executed and system is initialized
- *      Post condition: 
+ *      Post condition:
  *          Performs a single iteration of the system's function
  *          Repeates indefinetely unless the board is reset or powered off
  *******************************************************************************/
-void loop() 
+void loop()
 {
 uint16_t dist = 0;              /* LIDAR distance data is 16 bits. */
 
@@ -38,10 +62,10 @@ ser_printline("Setup completed.");
 ser_write( '\n' );
 
 while( 1 )
-    { 
-    /* 
+    {
+    /*
         - read a data frame from the TFmini sensor
-        
+
         - from Table 6, we know each LIDAR measurement sends 9 bytes
         - the function `ser_read()` can process 1 byte per function call
 
@@ -49,13 +73,13 @@ while( 1 )
         - You will need to write code to read the subsequent bytes to get the distance data
         - You will need to process the data received from the sensor to get the correct distance value
     */
-    if ('Y' == ser_read() && 'Y' == ser_read()) 
+    if ('Y' == ser_read() && 'Y' == ser_read())
         {
-        /* 
+        /*
 
-            - print the measured value to the console (i.e. the serial monitor) 
+            - print the measured value to the console (i.e. the serial monitor)
             - You can use ser_printf() or ser_printline() or ser_write()
-            
+
             - Helpful guide for printing with variadic function similiar to printf()
             - https://en.cppreference.com/w/cpp/io/c/fprintf
 
