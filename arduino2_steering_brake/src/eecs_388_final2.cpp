@@ -62,6 +62,11 @@ void timer1_init()
 #define BRAKE_HARD       2
 #define UNSAFE_STATE     3
 
+/* LED pins: change these two lines if your colors come out swapped.
+   D13 = PB5, D12 = PB4 */
+#define RED_BIT    PB5   /* GPIO_13 */
+#define GREEN_BIT  PB4   /* GPIO_12 */
+
 volatile uint8_t current_state = SAFE_STATE;
 
 ISR(TIMER1_COMPA_vect)
@@ -94,26 +99,26 @@ ISR(TIMER1_COMPA_vect)
     {
         case SAFE_STATE:
             // Green ON, Red OFF
-            PORTB |= (1 << PB5);
-            PORTB &= ~(1 << PB4);
+            PORTB |=  (1 << GREEN_BIT);
+            PORTB &= ~(1 << RED_BIT);
             break;
 
         case BRAKE_LIGHTLY:
             // Green ON, Red ON (Yellow)
-            PORTB |= (1 << PB5);
-            PORTB |= (1 << PB4);
+            PORTB |= (1 << GREEN_BIT);
+            PORTB |= (1 << RED_BIT);
             break;
 
         case BRAKE_HARD:
             // Red ON, Green OFF
-            PORTB &= ~(1 << PB5);
-            PORTB |= (1 << PB4);
+            PORTB &= ~(1 << GREEN_BIT);
+            PORTB |=  (1 << RED_BIT);
             break;
 
         case UNSAFE_STATE:
             // Flash red every 100ms
-            PORTB &= ~(1 << PB5);
-            PORTB ^= (1 << PB4);
+            PORTB &= ~(1 << GREEN_BIT);
+            PORTB ^=  (1 << RED_BIT);
             break;
     }
   }
@@ -187,6 +192,8 @@ void loop()
 {
   while(1){
     for(int i = 0; i < 11; ++i){
+      // DEBUG: Arduino 2's TX goes to USB, so this shows in the serial monitor (115200)
+      ser_printf("dist_low=%u state=%u\n", dist_low, current_state);
       for(int x = 0; x < 25; ++x){
         steering(angle_values[i]);
       }

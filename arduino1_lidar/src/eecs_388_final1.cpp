@@ -129,7 +129,10 @@ uint16_t current_distance;
     cli();
     current_distance = distance;
     SREG = oldSREG;
-    ser_printf("Distance: %u cm\n", current_distance);
+    // DO NOT print here: Arduino 1's TX pin is wired to Arduino 2's RX,
+    // so this text gets read by Arduino 2 as garbage distance bytes.
+    // ser_printf("Distance: %u cm\n", current_distance);
+    (void)current_distance;
     delay_ms(1000);
 return;
 }
